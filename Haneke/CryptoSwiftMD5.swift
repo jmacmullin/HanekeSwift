@@ -24,15 +24,15 @@ Permission is granted to anyone to use this software for any purpose,including c
 import Foundation
 
 /** array of bytes, little-endian representation */
-func arrayOfBytes<T>(value:T, length:Int? = nil) -> [Byte] {
+func arrayOfBytes<T>(value:T, length:Int? = nil) -> [UInt8] {
     let totalBytes = length ?? (sizeofValue(value) * 8)
     var v = value
     
     var valuePointer = UnsafeMutablePointer<T>.alloc(1)
     valuePointer.memory = value
     
-    var bytesPointer = UnsafeMutablePointer<Byte>(valuePointer)
-    var bytes = [Byte](count: totalBytes, repeatedValue: 0)
+    var bytesPointer = UnsafeMutablePointer<UInt8>(valuePointer)
+    var bytes = [UInt8](count: totalBytes, repeatedValue: 0)
     for j in 0..<min(sizeof(T),totalBytes) {
         bytes[totalBytes - 1 - j] = (bytesPointer + j).memory
     }
@@ -45,7 +45,7 @@ func arrayOfBytes<T>(value:T, length:Int? = nil) -> [Byte] {
 
 extension Int {
     /** Array of bytes with optional padding (little-endian) */
-    public func bytes(_ totalBytes: Int = sizeof(Int)) -> [Byte] {
+    public func bytes(_ totalBytes: Int = sizeof(Int)) -> [UInt8] {
         return arrayOfBytes(self, length: totalBytes)
     }
     
@@ -54,7 +54,7 @@ extension Int {
 extension NSMutableData {
     
     /** Convenient way to append bytes */
-    internal func appendBytes(arrayOfBytes: [Byte]) {
+    internal func appendBytes(arrayOfBytes: [UInt8]) {
         self.appendBytes(arrayOfBytes, length: arrayOfBytes.count)
     }
     
@@ -134,10 +134,9 @@ class MD5 : HashBase {
             let chunk = tmpMessage.subdataWithRange(NSRange(location: i, length: min(chunkSizeBytes,leftMessageBytes)))
             
             // break chunk into sixteen 32-bit words M[j], 0 ≤ j ≤ 15
-            var M:[UInt32] = [UInt32](count: 16, repeatedValue: 0)
-            for x in 0..<M.count {
-                chunk.getBytes(&M[x], range:NSRange(location:x * sizeofValue(M[x]), length: sizeofValue(M[x])))
-            }
+            let wordSize = sizeof(UInt32)
+            var M = [UInt32](count: 16, repeatedValue: 0)
+            chunk.getBytes(&M, length: M.count * wordSize)
             
             // Initialize hash value for this chunk:
             var A:UInt32 = hh[0]
@@ -176,7 +175,7 @@ class MD5 : HashBase {
                 D = C
                 C = B
                 B = B &+ rotateLeft((A &+ F &+ k[j] &+ M[g]), s[j])
-                A = dTemp    
+                A = dTemp
             }
             
             hh[0] = hh[0] &+ A
@@ -191,6 +190,6 @@ class MD5 : HashBase {
             buf.appendBytes(&i, length: sizeofValue(i))
         })
         
-        return buf.copy() as NSData
+        return buf.copy() as! NSData
     }
 }

@@ -11,7 +11,7 @@ import Foundation
 public class DiskCache {
     
     public class func basePath() -> String {
-        let cachesPath = NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory.CachesDirectory, NSSearchPathDomainMask.UserDomainMask, true)[0] as String
+        let cachesPath = NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory.CachesDirectory, NSSearchPathDomainMask.UserDomainMask, true)[0] as! String
         let hanekePathComponent = HanekeGlobals.Domain
         let basePath = cachesPath.stringByAppendingPathComponent(hanekePathComponent)
         // TODO: Do not recaculate basePath value
@@ -45,9 +45,9 @@ public class DiskCache {
         })
     }
     
-    public func setData(getData : @autoclosure () -> NSData?, key : String) {
+    public func setData(@autoclosure(escaping) getData : () -> NSData?, key : String) {
         dispatch_async(cacheQueue, {
-            self.setDataSync(getData, key: key)
+            self.setDataSync(getData(), key: key)
         })
     }
     
@@ -104,7 +104,7 @@ public class DiskCache {
         })
     }
 
-    public func updateAccessDate(getData : @autoclosure () -> NSData?, key : String) {
+    public func updateAccessDate(@autoclosure(escaping) getData : () -> NSData?, key : String) {
         dispatch_async(cacheQueue, {
             let path = self.pathForKey(key)
             let fileManager = NSFileManager.defaultManager()
@@ -117,7 +117,7 @@ public class DiskCache {
 
     public func pathForKey(key : String) -> String {
         var escapedFilename = key.escapedFilename()
-        let filename = countElements(escapedFilename) < Int(NAME_MAX) ? escapedFilename : key.MD5Filename()
+        let filename = count(escapedFilename) < Int(NAME_MAX) ? escapedFilename : key.MD5Filename()
         let keyPath = self.path.stringByAppendingPathComponent(filename)
         return keyPath
     }
@@ -158,7 +158,7 @@ public class DiskCache {
         }
     }
     
-    private func setDataSync(getData : @autoclosure () -> NSData?, key : String) {
+    private func setDataSync(@autoclosure getData : () -> NSData?, key : String) {
         let path = self.pathForKey(key)
         var error: NSError?
         if let data = getData() {
@@ -171,7 +171,7 @@ public class DiskCache {
             if let attributes = previousAttributes {
                 self.size -= attributes.fileSize()
             }
-            self.size += data.length
+            self.size += UInt64(data.length)
             self.controlCapacity()
         } else {
             Log.error("Failed to get data for key \(key)")
